@@ -1698,6 +1698,64 @@ template<typename R> struct TheTest
         return *this;
     }
 
+    TheTest &test_log_fp32() {
+        int n = VTraits<R>::vlanes();
+        // Test special values
+        std::vector<LaneType> specialValues = {0, 1, M_E, INFINITY, -INFINITY, NAN};
+        std::vector<Data<R>> resVec;
+
+        for (LaneType v : specialValues) {
+            Data<R> dataV(v);
+            R x = dataV;
+            resVec.push_back(v_log(x));
+        }
+
+        for (int i = 0; i < n; ++i) {
+            SCOPED_TRACE(cv::format("Special test index: %d", i));
+            EXPECT_TRUE(std::isnan(resVec[0][i]));
+            EXPECT_EQ((LaneType ) 0, resVec[1][i]);
+            EXPECT_EQ((LaneType) 1, resVec[2][i]);
+            EXPECT_TRUE(resVec[3][i] > 0 && std::isinf(resVec[3][i]));
+            EXPECT_TRUE(std::isnan(resVec[4][i]));
+            EXPECT_TRUE(std::isnan(resVec[5][i]));
+        }
+
+        // Test random values
+        const int testRandNum = 5000;
+        double diff_thr = 1e-6;
+        double enlarge_factor = 1;
+        const float flt_max = std::numeric_limits<float>::max();
+        const float flt_min = std::numeric_limits<float>::min();
+        for (int i = 0; i < testRandNum; i++) {
+            Data<R> dataRandOne, dataRandMax, resRandOne, resRandMax;
+            for (int j = 0; j < n; ++j) {
+                // Generate random data in [0, 1]
+                dataRandOne[j] = (LaneType) (std::rand() / (double) RAND_MAX);
+                // Generate random data in [1, FLT_MAX]
+                dataRandMax[j] = (LaneType) ((flt_max - 1) * (std::rand() / (double) RAND_MAX) + 1);
+            }
+            // Compare with std::log
+            R x = dataRandOne;
+            resRandOne = v_log(x);
+            for (int j = 0; j < n; ++j) {
+                SCOPED_TRACE(cv::format("Random test value in [0, 1]: %f", dataRandOne[j]));
+                LaneType std_log = std::log(dataRandOne[j]);
+                EXPECT_LE(resRandOne[j], 0);
+                EXPECT_LT(std::abs(resRandOne[j] - std_log), diff_thr * (std::abs(std_log) + flt_min * enlarge_factor));
+            }
+
+            R y = dataRandMax;
+            resRandMax = v_log(y);
+            for (int j = 0; j < n; ++j) {
+                SCOPED_TRACE(cv::format("Random test value in [1, INF]: %f", dataRandMax[j]));
+                LaneType std_log = std::log(dataRandMax[j]);
+                EXPECT_GE(resRandMax[j], 0);
+                EXPECT_LT(std::abs(resRandMax[j] - std_log), diff_thr * (std_log + flt_min * enlarge_factor));
+            }
+        }
+        return *this;
+    }
+
 };
 
 #define DUMP_ENTRY(type) printf("SIMD%d: %s\n", 8*VTraits<v_uint8>::vlanes(), CV__TRACE_FUNCTION);
@@ -2011,6 +2069,7 @@ void test_hal_intrin_float32()
         .test_extract_highest()
         .test_broadcast_highest()
         .test_pack_triplets()
+        .test_log_fp32()
 #if CV_SIMD_WIDTH == 32
         .test_extract<4>().test_extract<5>().test_extract<6>().test_extract<7>()
         .test_rotate<4>().test_rotate<5>().test_rotate<6>().test_rotate<7>()

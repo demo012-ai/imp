@@ -1225,6 +1225,75 @@ namespace CV__SIMD_NAMESPACE {
 
 //! @endcond
 
+//! @name Natural Logarithm
+//! @{
+    // Reference: https://github.com/aff3ct/MIPP/blob/f3cd53611cc3a9688e30632b8c1d13eccb701aa7/include/math/neon_mathfun.hxx#L46-L117
+    inline v_float32 v_log(const v_float32 &x) {
+        const v_float32 _vlog_one_fp32 = vx_setall_f32(1.0f);
+        const v_float32 _vlog_SQRTHF_fp32 = vx_setall_f32(0.707106781186547524);
+        const v_float32 _vlog_q1_fp32 = vx_setall_f32(-2.12194440E-4);
+        const v_float32 _vlog_q2_fp32 = vx_setall_f32(0.693359375);
+        const v_float32 _vlog_p0_fp32 = vx_setall_f32(7.0376836292E-2);
+        const v_float32 _vlog_p1_fp32 = vx_setall_f32(-1.1514610310E-1);
+        const v_float32 _vlog_p2_fp32 = vx_setall_f32(1.1676998740E-1);
+        const v_float32 _vlog_p3_fp32 = vx_setall_f32(-1.2420140846E-1);
+        const v_float32 _vlog_p4_fp32 = vx_setall_f32(1.4249322787E-1);
+        const v_float32 _vlog_p5_fp32 = vx_setall_f32(-1.6668057665E-1);
+        const v_float32 _vlog_p6_fp32 = vx_setall_f32(2.0000714765E-1);
+        const v_float32 _vlog_p7_fp32 = vx_setall_f32(-2.4999993993E-1);
+        const v_float32 _vlog_p8_fp32 = vx_setall_f32(3.3333331174E-1);
+        const v_int32 _vlog_inv_mant_mask_s32 = vx_setall_s32(0x807fffff);
+
+        v_float32 _vlog_x, _vlog_e, _vlog_y, _vlog_z, _vlog_tmp;
+        v_int32 _vlog_ux, _vlog_emm0;
+
+        _vlog_ux = v_reinterpret_as_s32(x);
+        _vlog_emm0 = v_shr(_vlog_ux, 23);
+
+        _vlog_ux = v_and(_vlog_ux, _vlog_inv_mant_mask_s32);
+        _vlog_ux = v_or(_vlog_ux, v_reinterpret_as_s32(vx_setall_f32(0.5f)));
+        _vlog_x = v_reinterpret_as_f32(_vlog_ux);
+
+        _vlog_emm0 = v_sub(_vlog_emm0, vx_setall_s32(0x7f));
+        _vlog_e = v_cvt_f32(_vlog_emm0);
+
+        _vlog_e = v_add(_vlog_e, _vlog_one_fp32);
+
+        v_float32 _vlog_mask = v_lt(_vlog_x, _vlog_SQRTHF_fp32);
+        _vlog_tmp = v_and(_vlog_x, _vlog_mask);
+        _vlog_x = v_sub(_vlog_x, _vlog_one_fp32);
+        _vlog_e = v_sub(_vlog_e, v_reinterpret_as_f32(v_and(_vlog_one_fp32, _vlog_mask)));
+        _vlog_x = v_add(_vlog_x, _vlog_tmp);
+
+        _vlog_z = v_mul(_vlog_x, _vlog_x);
+
+        _vlog_y = v_fma(_vlog_p0_fp32, _vlog_x, _vlog_p1_fp32);
+        _vlog_y = v_fma(_vlog_y, _vlog_x, _vlog_p2_fp32);
+        _vlog_y = v_fma(_vlog_y, _vlog_x, _vlog_p3_fp32);
+        _vlog_y = v_fma(_vlog_y, _vlog_x, _vlog_p4_fp32);
+        _vlog_y = v_fma(_vlog_y, _vlog_x, _vlog_p5_fp32);
+        _vlog_y = v_fma(_vlog_y, _vlog_x, _vlog_p6_fp32);
+        _vlog_y = v_fma(_vlog_y, _vlog_x, _vlog_p7_fp32);
+        _vlog_y = v_fma(_vlog_y, _vlog_x, _vlog_p8_fp32);
+        _vlog_y = v_mul(_vlog_y, _vlog_x);
+        _vlog_y = v_mul(_vlog_y, _vlog_z);
+
+        _vlog_y = v_fma(_vlog_e, _vlog_q1_fp32, _vlog_y);
+
+        _vlog_y = v_sub(_vlog_y, v_mul(_vlog_z, vx_setall_f32(0.5)));
+
+        _vlog_x = v_add(_vlog_x, _vlog_y);
+        _vlog_x = v_fma(_vlog_e, _vlog_q2_fp32, _vlog_x);
+
+        // negative, zero and nan will return nan
+        v_float32 mask_not_nan = v_gt(x, vx_setzero_f32());
+        _vlog_x = v_select(mask_not_nan, _vlog_x, v_reinterpret_as_f32(vx_setall_s32(0x7fc00000)));
+        // infinity will return infinity
+        v_float32 mask_inf = v_eq(x, v_reinterpret_as_f32(vx_setall_s32(0x7f800000)));
+        _vlog_x = v_select(mask_inf, x, _vlog_x);
+        return _vlog_x;
+    }
+//! @}
 
 //! @}
     #undef VXPREFIX
