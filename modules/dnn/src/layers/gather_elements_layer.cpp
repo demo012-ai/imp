@@ -183,13 +183,19 @@ public:
     virtual Ptr<BackendNode> initNgraph(const std::vector<Ptr<BackendWrapper> >& inputs,
                                         const std::vector<Ptr<BackendNode> >& nodes) CV_OVERRIDE
     {
-        int32_t indicesBoundValue = nodes[0].dynamicCast<InfEngineNgraphNode>()->node.get_shape()[axis];
-        auto indicesBound = std::make_shared<ov::op::v0::Constant>(ov::element::i32, ov::Shape{}, &indicesBoundValue);
-        auto indices = std::make_shared<ov::op::v0::Convert>(nodes[1].dynamicCast<InfEngineNgraphNode>()->node, ov::element::i32);
-        auto indicesNonNegative = std::make_shared<ov::op::v1::Mod>(
-            std::make_shared<ov::op::v1::Add>(indices, indicesBound),
-            indicesBound);
+        int64_t indicesBoundInt64 = nodes[0].dynamicCast<InfEngineNgraphNode>()->node.get_shape()[axis];
+        int32_t indicesBoundInt32 = indicesBoundInt64;
+        std::shared_ptr<ov::op::v0::Constant> indicesBound;
+        if (nodes[1].dynamicCast<InfEngineNgraphNode>()->node.get_element_type() == ov::element::i32)
+            indicesBound = std::make_shared<ov::op::v0::Constant>(ov::element::i32, ov::Shape{}, &indicesBoundInt32);
+        else if (nodes[1].dynamicCast<InfEngineNgraphNode>()->node.get_element_type() == ov::element::i64)
+            indicesBound = std::make_shared<ov::op::v0::Constant>(ov::element::i64, ov::Shape{}, &indicesBoundInt64);
+        else
+            CV_Error(Error::StsNotImplemented, "");
 
+        auto indicesNonNegative = std::make_shared<ov::op::v1::Mod>(
+            std::make_shared<ov::op::v1::Add>(nodes[1].dynamicCast<InfEngineNgraphNode>()->node, indicesBound),
+            indicesBound);
         auto gatherElements = std::make_shared<ov::op::v6::GatherElements>(
             nodes[0].dynamicCast<InfEngineNgraphNode>()->node,
             indicesNonNegative,

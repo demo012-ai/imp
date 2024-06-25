@@ -435,9 +435,6 @@ TEST_P(Imgproc_FindContours_Modes2, approx)
         vector<Vec4i> hierarchy;
         findContours(img, contours, hierarchy, mode, method);
 
-        // NOTE: old and new function results might not match when approximation mode is TC89.
-        // Currently this test passes, but might fail for other random data.
-        // See https://github.com/opencv/opencv/issues/25663 for details.
         // TODO: check something
     }
 }

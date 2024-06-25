@@ -250,7 +250,7 @@ public:
     {
         auto scatterND = std::make_shared<ov::op::v3::ScatterNDUpdate>(
             nodes[0].dynamicCast<InfEngineNgraphNode>()->node,
-            std::make_shared<ov::op::v0::Convert>(nodes[1].dynamicCast<InfEngineNgraphNode>()->node, ov::element::i32),
+            nodes[1].dynamicCast<InfEngineNgraphNode>()->node,
             nodes[2].dynamicCast<InfEngineNgraphNode>()->node);
         return Ptr<BackendNode>(new InfEngineNgraphNode(scatterND));
     }

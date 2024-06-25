@@ -125,7 +125,7 @@ public:
         auto axisNode = std::make_shared<ov::op::v0::Constant>(ov::element::i32, ov::Shape{}, &m_axis);
         auto gather = std::make_shared<ov::op::v8::Gather>(
             nodes[0].dynamicCast<InfEngineNgraphNode>()->node,
-            std::make_shared<ov::op::v0::Convert>(nodes[1].dynamicCast<InfEngineNgraphNode>()->node, ov::element::i32),
+            nodes[1].dynamicCast<InfEngineNgraphNode>()->node,
             axisNode);
         return Ptr<BackendNode>(new InfEngineNgraphNode(gather));
     }
